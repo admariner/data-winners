@@ -32,7 +32,7 @@ def run(request):
         `make_response <http://flask.pocoo.org/docs/1.0/api/#flask.Flask.make_response>`.
     """
     request_json = request.get_json()
-    
+
     ##### get variables
     site = request_json.get('site')
     BQ_DATASET_NAME = request_json.get('BQ_DATASET_NAME')
@@ -54,8 +54,8 @@ def run(request):
         start_date = datetime.datetime.strptime( request_json.get('start_date'), '%Y-%m-%d')
     else:
         # defaults to today minus n_days_ago
-        start_date = (datetime.datetime.today() - datetime.timedelta(days=n_days_ago))
-    
+        start_date = datetime.datetime.now() - datetime.timedelta(days=n_days_ago)
+
     # optional end_date
     if request_json.get('end_date'):
         # given a start date so use that
@@ -74,7 +74,7 @@ def run(request):
     ]
     credentials = service_account.Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    
+
 
     #### Google Search Console
     # initiates the credentials
@@ -98,7 +98,7 @@ def run(request):
 
     def query_table_clicks(start_date, end_date, PROJECT_ID, DATASET, TABLE, property):
         QUERY = "SELECT start_date, sum(clicks) as total_clicks FROM {dataset}.{table} WHERE start_date >= '{end_date}' and start_date <= '{start_date}' and property = '{property}' group by start_date"
-        
+
         query = QUERY.format(dataset=DATASET, table=TABLE, start_date=start_date, end_date=end_date, property=property)
         result = pd.read_gbq(query, PROJECT_ID, dialect='standard')
 
@@ -118,7 +118,7 @@ def run(request):
     days_to_check = bq_results
     input_days_to_check = pd.DataFrame()
     dates_input_to_check = []
-    for days_back in range(0, n_days_back):
+    for days_back in range(n_days_back):
         dates_input_to_check.append( (start_date - datetime.timedelta(days=days_back)).date() )
     input_days_to_check['start_date'] = dates_input_to_check
     input_days_to_check['from_inputs'] = True
@@ -130,7 +130,7 @@ def run(request):
 
     # loop over the days that are missing clicks
     for index, row in days_to_check.sort_values('start_date').iterrows():
-        
+
 
         start_date_to_process = row['start_date']
         end_date_to_process = start_date_to_process
@@ -194,11 +194,11 @@ def run(request):
 
 
         if(len(all_rows_as_json)):
-        
+
             # delete the data currently loaded just in case
             def delete_data(start_date, end_date, PROJECT_ID, DATASET, TABLE, property):
                 QUERY = "delete FROM {dataset}.{table} WHERE start_date >= '{start_date}' and start_date <= '{end_date}' and property = '{property}'"
-                
+
                 query = QUERY.format(dataset=DATASET, table=TABLE, start_date=start_date, end_date=end_date, property=property)
                 query_job = client_bq.query(query)  # API request
                 rows = query_job.result()
@@ -212,7 +212,7 @@ def run(request):
 
 
 
-        
+
             # convert the raw rows to a pandas df
             df_queries = pd.DataFrame(all_rows_as_json)
             df_queries['property'] = site
@@ -223,7 +223,7 @@ def run(request):
             # Bring back a key from the intial dataframe so we can join
             new_cols['key'] = df_queries['keys']
             new_cols[['start_date', "url", "query", "device", "country"]] = pd.DataFrame(df_queries['keys'].tolist(), index= df_queries.index)
-            
+
             # convert string to date
             new_cols["start_date"] =  pd.to_datetime(new_cols["start_date"], format="%Y-%m-%d").dt.date
 
@@ -244,11 +244,11 @@ def run(request):
             # Update the in-memory credentials cache (added in pandas-gbq 0.7.0).
             pandas_gbq.context.credentials = credentials
             pandas_gbq.context.project = BQ_PROJECT_NAME
-            
+
 
             def query_table(start_date, end_date, PROJECT_ID, DATASET, TABLE, property):
                 QUERY = "SELECT * FROM {dataset}.{table} WHERE start_date >= '{start_date}' and start_date <= '{end_date}' and property = '{property}'"
-                
+
                 query = QUERY.format(dataset=DATASET, table=TABLE, start_date=start_date, end_date=end_date, property=property)
                 result = pd.read_gbq(query, PROJECT_ID, dialect='standard')
 
@@ -278,7 +278,7 @@ def run(request):
 
                 # create a job config
                 # Set the destination table
-                
+
                 table_id = '{}.{}.{}'.format(BQ_PROJECT_NAME, BQ_DATASET_NAME, BQ_TABLE_NAME)
                 job_config = bigquery.LoadJobConfig(
                     # Specify a (partial) schema. All columns are always written to the

@@ -14,9 +14,12 @@ class RestClient:
         connection = HTTPSConnection(self.domain)
         try:
             base64_bytes = b64encode(
-                ("%s:%s" % (self.username, self.password)).encode("ascii")
-                ).decode("ascii")
-            headers = {'Authorization' : 'Basic %s' %  base64_bytes, 'Content-Encoding' : 'gzip'}
+                f"{self.username}:{self.password}".encode("ascii")
+            ).decode("ascii")
+            headers = {
+                'Authorization': f'Basic {base64_bytes}',
+                'Content-Encoding': 'gzip',
+            }
             connection.request(method, path, headers=headers, body=data)
             response = connection.getresponse()
             return loads(response.read().decode())
@@ -27,8 +30,5 @@ class RestClient:
         return self.request(path, 'GET')
 
     def post(self, path, data):
-        if isinstance(data, str):
-            data_str = data
-        else:
-            data_str = dumps(data)
+        data_str = data if isinstance(data, str) else dumps(data)
         return self.request(path, 'POST', data_str)
